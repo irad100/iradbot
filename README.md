@@ -1,4 +1,4 @@
-# OpenClaw on Cloudflare Workers
+# iradbot
 
 Run [OpenClaw](https://github.com/openclaw/openclaw) (formerly Moltbot, formerly Clawdbot) personal AI assistant in a [Cloudflare Sandbox](https://developers.cloudflare.com/sandbox/).
 
@@ -63,10 +63,10 @@ npm run deploy
 After deploying, open the Control UI with your token:
 
 ```
-https://your-worker.workers.dev/?token=YOUR_GATEWAY_TOKEN
+https://bot.irad.dev/?token=YOUR_GATEWAY_TOKEN
 ```
 
-Replace `your-worker` with your actual worker subdomain and `YOUR_GATEWAY_TOKEN` with the token you generated above.
+Replace `YOUR_GATEWAY_TOKEN` with the token you generated above.
 
 **Note:** The first request may take 1-2 minutes while the container starts.
 
@@ -87,7 +87,7 @@ To use the admin UI at `/_admin/` for device management, you need to:
 The easiest way to protect your worker is using the built-in Cloudflare Access integration for workers.dev:
 
 1. Go to the [Workers & Pages dashboard](https://dash.cloudflare.com/?to=/:account/workers-and-pages)
-2. Select your Worker (e.g., `moltbot-sandbox`)
+2. Select your Worker (e.g., `iradbot`)
 3. In **Settings**, under **Domains & Routes**, in the `workers.dev` row, click the meatballs menu (`...`)
 4. Click **Enable Cloudflare Access**
 5. Click **Manage Cloudflare Access** to configure who can access:
@@ -124,7 +124,7 @@ If you prefer more control, you can manually create an Access application:
 1. Go to [Cloudflare Zero Trust Dashboard](https://one.dash.cloudflare.com/)
 2. Navigate to **Access** > **Applications**
 3. Create a new **Self-hosted** application
-4. Set the application domain to your Worker URL (e.g., `moltbot-sandbox.your-subdomain.workers.dev`)
+4. Set the application domain to your Worker URL (e.g., `bot.irad.dev`)
 5. Add paths to protect: `/_admin/*`, `/api/*`, `/debug/*`
 6. Configure your desired identity providers (e.g., email OTP, Google, GitHub)
 7. Copy the **Application Audience (AUD)** tag and set the secrets as shown above
@@ -156,8 +156,8 @@ This is the most secure option as it requires explicit approval for each device.
 A gateway token is required to access the Control UI when hosted remotely. Pass it as a query parameter:
 
 ```
-https://your-worker.workers.dev/?token=YOUR_TOKEN
-wss://your-worker.workers.dev/ws?token=YOUR_TOKEN
+https://bot.irad.dev/?token=YOUR_TOKEN
+wss://bot.irad.dev/ws?token=YOUR_TOKEN
 ```
 
 **Note:** Even with a valid token, new devices still require approval via the admin UI at `/_admin/` (see Device Pairing above).
@@ -173,7 +173,7 @@ By default, moltbot data (configs, paired devices, conversation history) is lost
 1. Go to **R2** > **Overview** in the [Cloudflare Dashboard](https://dash.cloudflare.com/)
 2. Click **Manage R2 API Tokens**
 3. Create a new token with **Object Read & Write** permissions
-4. Select the `moltbot-data` bucket (created automatically on first deploy)
+4. Select the `iradbot-data` bucket (created automatically on first deploy)
 5. Copy the **Access Key ID** and **Secret Access Key**
 
 ### 2. Set Secrets
@@ -282,7 +282,7 @@ npx wrangler secret put CDP_SECRET
 
 ```bash
 npx wrangler secret put WORKER_URL
-# Enter: https://your-worker.workers.dev
+# Enter: https://bot.irad.dev
 ```
 
 3. Redeploy:
