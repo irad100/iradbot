@@ -20,7 +20,7 @@
  * - SLACK_BOT_TOKEN + SLACK_APP_TOKEN: Slack tokens
  */
 
-import { Hono } from 'hono';
+import { Hono, type Context, type Next } from 'hono';
 import { getSandbox, Sandbox, type SandboxOptions } from '@cloudflare/sandbox';
 
 import type { AppEnv, MoltbotEnv } from './types';
@@ -144,32 +144,32 @@ app.route('/cdp', cdp);
 // PROTECTED ROUTES: Cloudflare Access authentication required
 // =============================================================================
 
-// Middleware: Validate required environment variables (skip in dev mode and for debug routes)
-app.use('*', async (c, next) => {
-  const url = new URL(c.req.url);
-  
-  // Skip validation for debug routes (they have their own enable check)
-  if (url.pathname.startsWith('/debug')) {
-    return next();
-  }
-  
+// Helper: Create access middleware with appropriate response type
+function accessMiddlewareForRequest(c: Context<AppEnv>) {
+  const acceptsHtml = c.req.header('Accept')?.includes('text/html');
+  return createAccessMiddleware({
+    type: acceptsHtml ? 'html' : 'json',
+    redirectOnMissing: acceptsHtml
+  });
+}
+
+// Helper: Validate required environment variables for protected routes
+async function validateEnvMiddleware(c: Context<AppEnv>, next: Next) {
   // Skip validation in dev mode
   if (c.env.DEV_MODE === 'true') {
     return next();
   }
-  
+
   const missingVars = validateRequiredEnv(c.env);
   if (missingVars.length > 0) {
     console.error('[CONFIG] Missing required environment variables:', missingVars.join(', '));
-    
+
     const acceptsHtml = c.req.header('Accept')?.includes('text/html');
     if (acceptsHtml) {
-      // Return a user-friendly HTML error page
       const html = configErrorHtml.replace('{{MISSING_VARS}}', missingVars.join(', '));
       return c.html(html, 503);
     }
-    
-    // Return JSON error for API requests
+
     return c.json({
       error: 'Configuration error',
       message: 'Required environment variables are not configured',
@@ -177,26 +177,18 @@ app.use('*', async (c, next) => {
       hint: 'Set these using: wrangler secret put <VARIABLE_NAME>',
     }, 503);
   }
-  
-  return next();
-});
 
-// Middleware: Cloudflare Access authentication for protected routes
-app.use('*', async (c, next) => {
-  // Determine response type based on Accept header
-  const acceptsHtml = c.req.header('Accept')?.includes('text/html');
-  const middleware = createAccessMiddleware({ 
-    type: acceptsHtml ? 'html' : 'json',
-    redirectOnMissing: acceptsHtml 
-  });
-  
-  return middleware(c, next);
-});
+  return next();
+}
 
 // Mount API routes (protected by Cloudflare Access)
+app.use('/api/*', validateEnvMiddleware);
+app.use('/api/*', async (c, next) => accessMiddlewareForRequest(c)(c, next));
 app.route('/api', api);
 
 // Mount Admin UI routes (protected by Cloudflare Access)
+app.use('/_admin/*', validateEnvMiddleware);
+app.use('/_admin/*', async (c, next) => accessMiddlewareForRequest(c)(c, next));
 app.route('/_admin', adminUi);
 
 // Mount debug routes (protected by Cloudflare Access, only when DEBUG_ROUTES is enabled)
@@ -206,6 +198,8 @@ app.use('/debug/*', async (c, next) => {
   }
   return next();
 });
+app.use('/debug/*', validateEnvMiddleware);
+app.use('/debug/*', async (c, next) => accessMiddlewareForRequest(c)(c, next));
 app.route('/debug', debug);
 
 // =============================================================================
